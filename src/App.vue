@@ -52,7 +52,7 @@
       </div>
     </header>
 
-    <!-- 主体内容区 -->
+    <!-- 主体内容区（一屏布局） -->
     <main class="main-content">
       <!-- 左侧列 -->
       <aside class="left-column">
@@ -62,15 +62,15 @@
           <div class="stats-grid">
             <div class="stat-item">
               <div class="stat-value">{{ stats.total }}</div>
-              <div class="stat-label">监控司机总数</div>
+              <div class="stat-label">监控司机</div>
             </div>
             <div class="stat-item">
               <div class="stat-value high">{{ stats.high }}</div>
-              <div class="stat-label">高危疲劳人数</div>
+              <div class="stat-label">高危</div>
             </div>
             <div class="stat-item">
               <div class="stat-value medium">{{ stats.medium }}</div>
-              <div class="stat-label">中等风险人数</div>
+              <div class="stat-label">中等</div>
             </div>
           </div>
 
@@ -80,277 +80,262 @@
               <div class="bar-segment medium" :style="{ width: mediumPercent + '%' }"></div>
               <div class="bar-segment low" :style="{ width: lowPercent + '%' }"></div>
             </div>
-            <div class="distribution-legend">
-              <span class="legend-item">
-                <i class="legend-dot high"></i>高危 {{ highPercent }}%
-              </span>
-              <span class="legend-item">
-                <i class="legend-dot medium"></i>中等 {{ mediumPercent }}%
-              </span>
-              <span class="legend-item">
-                <i class="legend-dot low"></i>低风险 {{ lowPercent }}%
-              </span>
-            </div>
           </div>
         </section>
 
-        <!-- 司机疲劳风险排名 -->
+        <!-- 司机疲劳风险排名（压缩版） -->
         <section class="card driver-list-card">
-          <h2 class="card-title">司机疲劳风险排名</h2>
-          <div class="driver-list">
+          <h2 class="card-title">司机风险排名 Top {{ filteredDrivers.length }}</h2>
+          <div class="driver-list-compact">
             <div
               v-for="driver in filteredDrivers"
               :key="driver.id"
-              class="driver-item"
+              class="driver-item-compact"
               :class="{ active: currentDriver?.id === driver.id }"
               @click="selectDriver(driver)"
             >
-              <div class="driver-info">
-                <div class="driver-header">
-                  <span class="driver-name">{{ driver.name }}</span>
-                  <span class="risk-badge" :class="driver.riskLevel">
-                    {{ riskLabelMap[driver.riskLevel] }}
-                  </span>
-                </div>
-                <div class="driver-meta">
-                  <span class="meta-item">{{ driver.line }}</span>
-                  <span class="meta-separator">·</span>
-                  <span class="meta-item">连续 {{ driver.driveHours }}h</span>
-                </div>
+              <div class="driver-main">
+                <span class="driver-name">{{ driver.name }}</span>
+                <span class="driver-line">{{ driver.line }}</span>
               </div>
-              <div class="fatigue-score" :class="driver.riskLevel">
-                {{ driver.fatigueScore }}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 设备在线情况 -->
-        <section class="card device-status-card">
-          <h2 class="card-title">设备在线情况</h2>
-          <div class="device-item">
-            <div class="device-header">
-              <span class="device-name">穿戴设备</span>
-              <span class="device-count">{{ devices.wearableOnline }} / {{ devices.wearableTotal }}</span>
-            </div>
-            <div class="device-progress">
-              <div class="progress-bar" :style="{ width: (devices.wearableOnline / devices.wearableTotal * 100) + '%' }"></div>
-            </div>
-          </div>
-          <div class="device-item">
-            <div class="device-header">
-              <span class="device-name">驾驶舱摄像头</span>
-              <span class="device-count">{{ devices.cameraOnline }} / {{ devices.cameraTotal }}</span>
-            </div>
-            <div class="device-progress">
-              <div class="progress-bar" :style="{ width: (devices.cameraOnline / devices.cameraTotal * 100) + '%' }"></div>
+              <div class="driver-score" :class="driver.riskLevel">{{ driver.fatigueScore }}</div>
             </div>
           </div>
         </section>
       </aside>
 
-      <!-- 中间列 -->
+      <!-- 中间列（核心专业图表区） -->
       <section class="center-column">
         <!-- 当前司机概要 -->
-        <div class="card driver-summary">
-          <div class="summary-header">
-            <h2 class="driver-focus-title">当前关注司机：{{ currentDriver?.name }}</h2>
-            <div class="driver-tags">
-              <span class="tag">线路 {{ currentDriver?.line }}</span>
-              <span class="tag">{{ currentDriver?.shift }}</span>
-              <span class="tag risk" :class="currentDriver?.riskLevel">
-                疲劳风险：{{ riskStatusMap[currentDriver?.riskLevel] }}
-              </span>
-              <span class="tag">连续驾驶 {{ currentDriver?.driveHours }} h</span>
-            </div>
+        <div class="driver-summary-bar">
+          <div class="summary-left">
+            <span class="focus-label">关注司机：</span>
+            <span class="driver-name-large">{{ currentDriver?.name }}</span>
+            <span class="tag">{{ currentDriver?.line }}</span>
+            <span class="tag">{{ currentDriver?.shift }}</span>
+          </div>
+          <div class="summary-right">
+            <span class="risk-badge-large" :class="currentDriver?.riskLevel">
+              {{ riskStatusMap[currentDriver?.riskLevel] }}
+            </span>
+            <span class="drive-hours">连续驾驶 {{ currentDriver?.driveHours }}h</span>
           </div>
         </div>
 
-        <!-- 双列卡片 -->
-        <div class="dual-cards">
-          <!-- 智能穿戴体征 -->
-          <div class="card vitals-card">
-            <h3 class="card-title">智能穿戴体征 · 最近5分钟平均</h3>
-            <div class="vitals-grid">
-              <div class="vital-item">
-                <div class="vital-label">心率</div>
-                <div class="vital-value" :class="{ warning: currentDriver?.vitals.heartRate > 100 }">
-                  {{ currentDriver?.vitals.heartRate }} <span class="unit">bpm</span>
-                </div>
-                <div class="vital-threshold">阈值区间：60-100</div>
+        <!-- 三合一专业图表区 -->
+        <div class="professional-chart-area">
+          <!-- 图表1: 疲劳评分趋势（带分区背景） -->
+          <div class="chart-section chart-trend">
+            <h3 class="chart-title">疲劳评分趋势 · 最近30分钟</h3>
+            <div class="trend-chart-professional">
+              <!-- 背景分区 -->
+              <div class="zone-background">
+                <div class="zone safe">安全区</div>
+                <div class="zone warning">警戒区</div>
+                <div class="zone danger">高危区</div>
               </div>
-              <div class="vital-item">
-                <div class="vital-label">血氧</div>
-                <div class="vital-value" :class="{ warning: currentDriver?.vitals.spo2 < 94 }">
-                  {{ currentDriver?.vitals.spo2 }} <span class="unit">%</span>
+              <!-- 折线图 -->
+              <svg class="trend-svg" viewBox="0 0 700 120" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#ff6b3d;stop-opacity:0.3" />
+                    <stop offset="100%" style="stop-color:#ff6b3d;stop-opacity:0" />
+                  </linearGradient>
+                </defs>
+                <!-- 面积 -->
+                <path :d="trendAreaPath" fill="url(#trendGradient)" />
+                <!-- 折线 -->
+                <path :d="trendLinePath" fill="none" stroke="#ff6b3d" stroke-width="2" />
+                <!-- 数据点 -->
+                <circle
+                  v-for="(point, idx) in trendPoints"
+                  :key="idx"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="3"
+                  :fill="getPointColor(currentDriver?.fatigueTrend[idx])"
+                  class="trend-point"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <!-- 图表2: 多维体征叠加图 -->
+          <div class="chart-section chart-multi">
+            <h3 class="chart-title">多维体征监测 · 心率/压力/眨眼率</h3>
+            <div class="multi-dimension-chart">
+              <div class="dimension-row">
+                <div class="dimension-label">
+                  <span class="label-text">心率</span>
+                  <span class="label-value" :class="{ warning: currentDriver?.vitals.heartRate > 100 }">
+                    {{ currentDriver?.vitals.heartRate }} bpm
+                  </span>
                 </div>
-                <div class="vital-threshold">低于94%视为异常</div>
+                <div class="dimension-graph">
+                  <div class="graph-line">
+                    <div
+                      class="graph-fill heart-rate"
+                      :style="{ width: (currentDriver?.vitals.heartRate / 120 * 100) + '%' }"
+                    ></div>
+                  </div>
+                </div>
               </div>
-              <div class="vital-item">
-                <div class="vital-label">压力指数</div>
-                <div class="vital-value" :class="{ warning: currentDriver?.vitals.stressIndex > 75 }">
-                  {{ currentDriver?.vitals.stressIndex }}
+
+              <div class="dimension-row">
+                <div class="dimension-label">
+                  <span class="label-text">压力指数</span>
+                  <span class="label-value" :class="{ warning: currentDriver?.vitals.stressIndex > 75 }">
+                    {{ currentDriver?.vitals.stressIndex }}
+                  </span>
                 </div>
-                <div class="vital-threshold">结合 HRV 模型</div>
+                <div class="dimension-graph">
+                  <div class="graph-line">
+                    <div
+                      class="graph-fill stress"
+                      :style="{ width: currentDriver?.vitals.stressIndex + '%' }"
+                    ></div>
+                  </div>
+                </div>
               </div>
-              <div class="vital-item">
-                <div class="vital-label">体温</div>
-                <div class="vital-value">
-                  {{ currentDriver?.vitals.temp }} <span class="unit">℃</span>
+
+              <div class="dimension-row">
+                <div class="dimension-label">
+                  <span class="label-text">PERCLOS</span>
+                  <span class="label-value" :class="{ warning: currentDriver?.eye.perclos > 30 }">
+                    {{ currentDriver?.eye.perclos }}%
+                  </span>
                 </div>
-                <div class="vital-threshold">正常范围</div>
+                <div class="dimension-graph">
+                  <div class="graph-line">
+                    <div
+                      class="graph-fill perclos"
+                      :style="{ width: currentDriver?.eye.perclos + '%' }"
+                    ></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- 眼球与注意力检测 -->
-          <div class="card eye-detection-card">
-            <h3 class="card-title">眼球与注意力检测</h3>
-            <div class="eye-content">
-              <div class="gauge-container">
-                <div class="gauge">
-                  <div class="gauge-fill" :style="{
-                    background: getGaugeGradient(currentDriver?.fatigueScore),
-                    transform: `rotate(${currentDriver?.fatigueScore * 1.8}deg)`
-                  }"></div>
-                  <div class="gauge-cover">
-                    <div class="gauge-value">{{ currentDriver?.fatigueScore }}</div>
-                    <div class="gauge-label">疲劳指数</div>
-                  </div>
+          <!-- 图表3: 疲劳区段剖面图 -->
+          <div class="chart-section chart-zone">
+            <h3 class="chart-title">疲劳区段剖面 · 安全监控</h3>
+            <div class="zone-ribbon">
+              <div class="ribbon-track">
+                <div class="ribbon-zone safe-zone"></div>
+                <div class="ribbon-zone warning-zone"></div>
+                <div class="ribbon-zone danger-zone"></div>
+                <div
+                  class="current-position"
+                  :style="{ left: (currentDriver?.fatigueScore) + '%' }"
+                >
+                  <div class="position-marker"></div>
+                  <div class="position-label">{{ currentDriver?.fatigueScore }}</div>
                 </div>
               </div>
-
-              <div class="eye-metrics">
-                <div class="metric-row">
-                  <div class="metric-label">PERCLOS（闭眼比例）</div>
-                  <div class="metric-value">{{ currentDriver?.eye.perclos }}%</div>
-                  <div class="metric-bar">
-                    <div class="bar-fill" :class="getMetricClass(currentDriver?.eye.perclos, 30)"
-                         :style="{ width: currentDriver?.eye.perclos + '%' }"></div>
-                  </div>
-                </div>
-                <div class="metric-row">
-                  <div class="metric-label">连续凝视偏移</div>
-                  <div class="metric-value">{{ currentDriver?.eye.gazeAway }} s/min</div>
-                  <div class="metric-bar">
-                    <div class="bar-fill" :class="getMetricClass(currentDriver?.eye.gazeAway, 3)"
-                         :style="{ width: (currentDriver?.eye.gazeAway / 5 * 100) + '%' }"></div>
-                  </div>
-                </div>
-                <div class="metric-row">
-                  <div class="metric-label">打哈欠频次</div>
-                  <div class="metric-value">{{ currentDriver?.eye.yawnCount }} 次/10min</div>
-                  <div class="metric-bar">
-                    <div class="bar-fill" :class="getMetricClass(currentDriver?.eye.yawnCount, 4)"
-                         :style="{ width: (currentDriver?.eye.yawnCount / 10 * 100) + '%' }"></div>
-                  </div>
-                </div>
+              <div class="ribbon-labels">
+                <span class="zone-label">0</span>
+                <span class="zone-label">60</span>
+                <span class="zone-label">80</span>
+                <span class="zone-label">100</span>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 疲劳趋势 -->
-        <div class="card trend-card">
-          <h3 class="card-title">过去 30 分钟疲劳趋势</h3>
-          <div class="trend-chart">
-            <div class="chart-bars">
-              <div
-                v-for="(value, index) in currentDriver?.fatigueTrend"
-                :key="index"
-                class="chart-bar"
-              >
-                <div class="bar-column"
-                     :class="getTrendClass(value)"
-                     :style="{ height: value + '%' }">
-                </div>
-                <div class="bar-label">{{ (index + 1) * 5 }}min</div>
-              </div>
-            </div>
-            <div class="chart-legend">
-              <span class="legend-item"><i class="legend-dot safe"></i>安全区 (&lt;60)</span>
-              <span class="legend-item"><i class="legend-dot warning"></i>警戒区 (60-80)</span>
-              <span class="legend-item"><i class="legend-dot danger"></i>高风险 (&gt;80)</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- 右侧列 -->
+      <!-- 右侧列（实时告警流） -->
       <aside class="right-column">
-        <!-- 实时告警 -->
         <section class="card alerts-card">
-          <h2 class="card-title">实时告警 · 疲劳岗位</h2>
-          <div class="alerts-list">
-            <div v-for="alert in alerts" :key="alert.id" class="alert-item">
-              <div class="alert-severity" :class="alert.severity"></div>
-              <div class="alert-content">
-                <div class="alert-header">
-                  <span class="severity-badge" :class="alert.severity">
+          <h2 class="card-title">实时告警流 · 疲劳岗位</h2>
+          <div class="alerts-stream">
+            <div v-for="alert in alerts" :key="alert.id" class="alert-item-enhanced">
+              <div class="alert-severity-bar" :class="alert.severity"></div>
+              <div class="alert-content-enhanced">
+                <div class="alert-header-enhanced">
+                  <span class="severity-badge-enhanced" :class="alert.severity">
                     {{ severityMap[alert.severity] }}
                   </span>
                   <span class="alert-time">{{ alert.time }}</span>
                 </div>
-                <div class="alert-title">{{ alert.title }}</div>
-                <div class="alert-meta">
+                <div class="alert-title-enhanced">{{ alert.title }}</div>
+                <div class="alert-meta-enhanced">
                   <span>{{ alert.driver }}</span>
                   <span class="separator">·</span>
                   <span>{{ alert.line }}</span>
-                  <span class="separator">·</span>
-                  <span class="alert-source">{{ alert.source }}</span>
                 </div>
-                <button class="alert-action-btn">查看录像</button>
               </div>
             </div>
           </div>
-        </section>
-
-        <!-- 班次 & 区域风险分布 -->
-        <section class="card shift-stats-card">
-          <h2 class="card-title">班次 & 区域风险分布</h2>
-          <div class="shift-stats">
-            <div v-for="shift in shiftStats" :key="shift.name" class="shift-item">
-              <div class="shift-header">
-                <span class="shift-name">{{ shift.name }}</span>
-                <span class="shift-total">共 {{ shift.total }} 人</span>
-              </div>
-              <div class="shift-bar">
-                <div class="bar-segment high"
-                     :style="{ width: (shift.high / shift.total * 100) + '%' }"></div>
-                <div class="bar-segment medium"
-                     :style="{ width: (shift.medium / shift.total * 100) + '%' }"></div>
-                <div class="bar-segment low"
-                     :style="{ width: (shift.low / shift.total * 100) + '%' }"></div>
-              </div>
-              <div class="shift-counts">
-                <span class="count-item high">{{ shift.high }}</span>
-                <span class="count-item medium">{{ shift.medium }}</span>
-                <span class="count-item low">{{ shift.low }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- AI 运营建议 -->
-        <section class="card ai-suggestions-card">
-          <h2 class="card-title">AI 运营建议</h2>
-          <ul class="suggestions-list">
-            <li class="suggestion-item">
-              夜班高危司机集中在 02:00-04:00 时段，建议强制轮换或增加休息站观察点。
-            </li>
-            <li class="suggestion-item">
-              B12、K23 线路高风险明显偏高，建议缩短单次连续驾驶时长至 4 小时以内。
-            </li>
-            <li class="suggestion-item">
-              对高危司机启用分级告警策略：先语音提醒，其次减速提示，严重时通知调度中心。
-            </li>
-            <li class="suggestion-item">
-              建议在高风险时段增加智能穿戴设备检测频率，从 5 分钟缩短至 2 分钟一次。
-            </li>
-          </ul>
         </section>
       </aside>
     </main>
+
+    <!-- 底部横向三栏 -->
+    <footer class="bottom-bar">
+      <!-- 班次风险分布 -->
+      <section class="bottom-card">
+        <h3 class="bottom-card-title">班次风险分布</h3>
+        <div class="shift-stats-horizontal">
+          <div v-for="shift in shiftStats" :key="shift.name" class="shift-item-h">
+            <div class="shift-header-h">
+              <span class="shift-name-h">{{ shift.name }}</span>
+              <span class="shift-total-h">{{ shift.total }}人</span>
+            </div>
+            <div class="shift-bar-h">
+              <div class="bar-segment high" :style="{ width: (shift.high / shift.total * 100) + '%' }"></div>
+              <div class="bar-segment medium" :style="{ width: (shift.medium / shift.total * 100) + '%' }"></div>
+              <div class="bar-segment low" :style="{ width: (shift.low / shift.total * 100) + '%' }"></div>
+            </div>
+            <div class="shift-counts-h">
+              <span class="count high">{{ shift.high }}</span>
+              <span class="count medium">{{ shift.medium }}</span>
+              <span class="count low">{{ shift.low }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 设备在线情况 -->
+      <section class="bottom-card">
+        <h3 class="bottom-card-title">设备在线情况</h3>
+        <div class="device-status-horizontal">
+          <div class="device-item-h">
+            <div class="device-info-h">
+              <span class="device-name-h">穿戴设备</span>
+              <span class="device-count-h">{{ devices.wearableOnline }}/{{ devices.wearableTotal }}</span>
+            </div>
+            <div class="device-progress-h">
+              <div class="progress-bar-h" :style="{ width: (devices.wearableOnline / devices.wearableTotal * 100) + '%' }"></div>
+            </div>
+          </div>
+          <div class="device-item-h">
+            <div class="device-info-h">
+              <span class="device-name-h">驾驶舱摄像头</span>
+              <span class="device-count-h">{{ devices.cameraOnline }}/{{ devices.cameraTotal }}</span>
+            </div>
+            <div class="device-progress-h">
+              <div class="progress-bar-h" :style="{ width: (devices.cameraOnline / devices.cameraTotal * 100) + '%' }"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI 运营建议 -->
+      <section class="bottom-card">
+        <h3 class="bottom-card-title">AI 运营建议</h3>
+        <div class="ai-suggestions-compact">
+          <div class="suggestion-compact">
+            <i class="suggestion-icon">💡</i>
+            <span>夜班02:00-04:00高危集中，建议强制轮换</span>
+          </div>
+          <div class="suggestion-compact">
+            <i class="suggestion-icon">⚠️</i>
+            <span>B12/K23线路风险偏高，缩短驾驶时长</span>
+          </div>
+        </div>
+      </section>
+    </footer>
   </div>
 </template>
 
@@ -598,27 +583,40 @@ const severityMap = {
   low: '提示'
 }
 
-// 辅助函数
-const getGaugeGradient = (score) => {
-  if (score < 60) {
-    return 'linear-gradient(90deg, #2de1ff, #00ff88)'
-  } else if (score < 80) {
-    return 'linear-gradient(90deg, #ffd700, #ff8c00)'
-  } else {
-    return 'linear-gradient(90deg, #ff8c00, #ff3d3d)'
-  }
-}
+// SVG 趋势图路径计算
+const trendPoints = computed(() => {
+  if (!currentDriver.value?.fatigueTrend) return []
+  const trend = currentDriver.value.fatigueTrend
+  const width = 700
+  const height = 120
+  const stepX = width / (trend.length - 1)
 
-const getMetricClass = (value, threshold) => {
-  if (value > threshold) return 'danger'
-  if (value > threshold * 0.7) return 'warning'
-  return 'safe'
-}
+  return trend.map((value, index) => ({
+    x: index * stepX,
+    y: height - (value / 100 * height)
+  }))
+})
 
-const getTrendClass = (value) => {
-  if (value > 80) return 'danger'
-  if (value > 60) return 'warning'
-  return 'safe'
+const trendLinePath = computed(() => {
+  if (trendPoints.value.length === 0) return ''
+  return trendPoints.value.map((p, i) =>
+    i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`
+  ).join(' ')
+})
+
+const trendAreaPath = computed(() => {
+  if (trendPoints.value.length === 0) return ''
+  const points = trendPoints.value
+  let path = `M ${points[0].x} 120 `
+  path += points.map(p => `L ${p.x} ${p.y}`).join(' ')
+  path += ` L ${points[points.length - 1].x} 120 Z`
+  return path
+})
+
+const getPointColor = (value) => {
+  if (value > 80) return '#ff3d3d'
+  if (value > 60) return '#ffa500'
+  return '#00ff88'
 }
 
 // 生命周期
@@ -641,14 +639,18 @@ onUnmounted(() => {
 
 .dashboard {
   min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(135deg, #0a0e27 0%, #1a1442 50%, #0f1635 100%);
   color: #e0e6ed;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
                'Microsoft YaHei', sans-serif;
-  padding: 20px;
+  padding: 16px;
+  overflow: hidden;
 }
 
-/* 顶部导航 */
+/* ========== 顶部导航 ========== */
 .top-nav {
   display: flex;
   align-items: center;
@@ -657,27 +659,28 @@ onUnmounted(() => {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(45, 225, 255, 0.2);
   border-radius: 12px;
-  padding: 16px 24px;
-  margin-bottom: 20px;
+  padding: 12px 20px;
+  margin-bottom: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
 
 .nav-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .logo {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   background: linear-gradient(135deg, #2de1ff, #9b5bff);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 18px;
   color: #fff;
   box-shadow: 0 0 20px rgba(45, 225, 255, 0.5);
 }
@@ -685,11 +688,11 @@ onUnmounted(() => {
 .title-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .main-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   margin: 0;
   background: linear-gradient(90deg, #2de1ff, #9b5bff);
@@ -699,7 +702,7 @@ onUnmounted(() => {
 }
 
 .sub-title {
-  font-size: 12px;
+  font-size: 11px;
   color: #8b92a7;
   margin: 0;
 }
@@ -712,16 +715,16 @@ onUnmounted(() => {
 
 .filter-group {
   display: flex;
-  gap: 16px;
+  gap: 12px;
 }
 
 .filter-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 
   label {
-    font-size: 12px;
+    font-size: 11px;
     color: #8b92a7;
   }
 
@@ -729,9 +732,9 @@ onUnmounted(() => {
     background: rgba(45, 225, 255, 0.1);
     border: 1px solid rgba(45, 225, 255, 0.3);
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 5px 10px;
     color: #e0e6ed;
-    font-size: 13px;
+    font-size: 12px;
     outline: none;
     cursor: pointer;
     transition: all 0.3s;
@@ -751,7 +754,7 @@ onUnmounted(() => {
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .time-display {
@@ -759,14 +762,14 @@ onUnmounted(() => {
 }
 
 .current-time {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
   color: #2de1ff;
   font-family: 'Courier New', monospace;
 }
 
 .current-date {
-  font-size: 12px;
+  font-size: 11px;
   color: #8b92a7;
   margin-top: 2px;
 }
@@ -775,9 +778,9 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #9b5bff, #2de1ff);
   border: none;
   border-radius: 8px;
-  padding: 10px 20px;
+  padding: 8px 16px;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
@@ -789,44 +792,52 @@ onUnmounted(() => {
   }
 }
 
-/* 主体内容 */
+/* ========== 主体内容区（一屏布局） ========== */
 .main-content {
+  flex: 1;
   display: grid;
-  grid-template-columns: 320px 1fr 360px;
-  gap: 20px;
+  grid-template-columns: 280px 1fr 340px;
+  gap: 16px;
+  overflow: hidden;
+  min-height: 0;
 }
 
-/* 卡片通用样式 */
+/* ========== 卡片通用样式 ========== */
 .card {
   background: rgba(20, 25, 45, 0.5);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(45, 225, 255, 0.15);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  margin-bottom: 20px;
 }
 
 .card-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #2de1ff;
-  margin: 0 0 16px 0;
-  padding-bottom: 12px;
+  margin: 0 0 12px 0;
+  padding-bottom: 10px;
   border-bottom: 1px solid rgba(45, 225, 255, 0.2);
 }
 
-/* 左侧列 */
+/* ========== 左侧列 ========== */
 .left-column {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.overview-card {
+  flex-shrink: 0;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .stat-item {
@@ -834,7 +845,7 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #2de1ff;
 
@@ -848,21 +859,20 @@ onUnmounted(() => {
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #8b92a7;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .risk-distribution {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .distribution-bar {
   display: flex;
-  height: 8px;
-  border-radius: 4px;
+  height: 6px;
+  border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 12px;
 }
 
 .bar-segment {
@@ -881,61 +891,34 @@ onUnmounted(() => {
   }
 }
 
-.distribution-legend {
-  display: flex;
-  justify-content: space-around;
-  font-size: 11px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #8b92a7;
-}
-
-.legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-
-  &.high {
-    background: #ff6b3d;
-  }
-
-  &.medium {
-    background: #ffa500;
-  }
-
-  &.low {
-    background: #00ff88;
-  }
-}
-
-/* 司机列表 */
+/* 司机列表（压缩版） */
 .driver-list-card {
   flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
-.driver-list {
+.driver-list-compact {
   flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
   }
 
   &::-webkit-scrollbar-track {
     background: rgba(45, 225, 255, 0.05);
-    border-radius: 3px;
+    border-radius: 2px;
   }
 
   &::-webkit-scrollbar-thumb {
     background: rgba(45, 225, 255, 0.2);
-    border-radius: 3px;
+    border-radius: 2px;
 
     &:hover {
       background: rgba(45, 225, 255, 0.3);
@@ -943,86 +926,55 @@ onUnmounted(() => {
   }
 }
 
-.driver-item {
+.driver-item-compact {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 8px 10px;
   background: rgba(45, 225, 255, 0.05);
   border: 1px solid rgba(45, 225, 255, 0.1);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s;
+  flex-shrink: 0;
 
   &:hover {
     background: rgba(45, 225, 255, 0.1);
     border-color: rgba(45, 225, 255, 0.3);
-    transform: translateX(4px);
+    transform: translateX(3px);
   }
 
   &.active {
     background: rgba(45, 225, 255, 0.15);
     border-color: rgba(45, 225, 255, 0.5);
-    box-shadow: 0 0 15px rgba(45, 225, 255, 0.2);
+    box-shadow: 0 0 12px rgba(45, 225, 255, 0.2);
   }
 }
 
-.driver-info {
-  flex: 1;
-}
-
-.driver-header {
+.driver-main {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
 }
 
 .driver-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #e0e6ed;
 }
 
-.risk-badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
-
-  &.high {
-    background: rgba(255, 107, 61, 0.2);
-    color: #ff6b3d;
-    border: 1px solid rgba(255, 107, 61, 0.4);
-  }
-
-  &.medium {
-    background: rgba(255, 165, 0, 0.2);
-    color: #ffa500;
-    border: 1px solid rgba(255, 165, 0, 0.4);
-  }
-
-  &.low {
-    background: rgba(0, 255, 136, 0.2);
-    color: #00ff88;
-    border: 1px solid rgba(0, 255, 136, 0.4);
-  }
-}
-
-.driver-meta {
+.driver-line {
   font-size: 11px;
   color: #8b92a7;
+  padding: 2px 6px;
+  background: rgba(45, 225, 255, 0.1);
+  border-radius: 3px;
 }
 
-.meta-separator {
-  margin: 0 6px;
-}
-
-.fatigue-score {
-  font-size: 24px;
+.driver-score {
+  font-size: 20px;
   font-weight: 700;
-  min-width: 50px;
+  min-width: 40px;
   text-align: right;
 
   &.high {
@@ -1038,362 +990,393 @@ onUnmounted(() => {
   }
 }
 
-/* 设备状态 */
-.device-item {
-  margin-bottom: 16px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.device-header {
+/* ========== 中间列（核心专业图表区） ========== */
+.center-column {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 13px;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  min-height: 0;
 }
 
-.device-name {
+.driver-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(20, 25, 45, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(45, 225, 255, 0.15);
+  border-radius: 10px;
+  padding: 12px 16px;
+  flex-shrink: 0;
+}
+
+.summary-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.focus-label {
+  font-size: 12px;
+  color: #8b92a7;
+}
+
+.driver-name-large {
+  font-size: 16px;
+  font-weight: 700;
   color: #e0e6ed;
 }
 
-.device-count {
+.tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(45, 225, 255, 0.1);
+  border: 1px solid rgba(45, 225, 255, 0.3);
+  border-radius: 4px;
   color: #2de1ff;
-  font-weight: 600;
 }
 
-.device-progress {
-  height: 6px;
-  background: rgba(45, 225, 255, 0.1);
-  border-radius: 3px;
+.summary-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.risk-badge-large {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 6px;
+
+  &.high {
+    background: rgba(255, 107, 61, 0.2);
+    color: #ff6b3d;
+    border: 2px solid rgba(255, 107, 61, 0.5);
+  }
+
+  &.medium {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+    border: 2px solid rgba(255, 165, 0, 0.5);
+  }
+
+  &.low {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    border: 2px solid rgba(0, 255, 136, 0.5);
+  }
+}
+
+.drive-hours {
+  font-size: 12px;
+  color: #8b92a7;
+}
+
+/* 三合一专业图表区 */
+.professional-chart-area {
+  flex: 1;
+  display: grid;
+  grid-template-rows: 1fr 140px 100px;
+  gap: 12px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.chart-section {
+  background: rgba(20, 25, 45, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(45, 225, 255, 0.15);
+  border-radius: 10px;
+  padding: 12px;
   overflow: hidden;
 }
 
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #2de1ff, #9b5bff);
-  border-radius: 3px;
-  transition: width 0.3s;
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2de1ff;
+  margin: 0 0 10px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(45, 225, 255, 0.15);
 }
 
-/* 中间列 */
-.center-column {
+/* 图表1: 疲劳评分趋势 */
+.chart-trend {
   display: flex;
   flex-direction: column;
 }
 
-.driver-summary {
-  margin-bottom: 16px;
+.trend-chart-professional {
+  flex: 1;
+  position: relative;
+  min-height: 0;
 }
 
-.summary-header {
-  border: none;
-}
-
-.driver-focus-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #e0e6ed;
-  margin: 0 0 12px 0;
-}
-
-.driver-tags {
+.zone-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  z-index: 0;
 }
 
-.tag {
-  font-size: 12px;
-  padding: 4px 12px;
-  background: rgba(45, 225, 255, 0.1);
-  border: 1px solid rgba(45, 225, 255, 0.3);
-  border-radius: 6px;
-  color: #2de1ff;
+.zone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.6;
 
-  &.risk {
-    font-weight: 600;
+  &.safe {
+    background: linear-gradient(90deg, rgba(0, 255, 136, 0.05), rgba(0, 255, 136, 0.15));
+    color: #00ff88;
+  }
 
-    &.high {
-      background: rgba(255, 107, 61, 0.15);
-      border-color: rgba(255, 107, 61, 0.4);
-      color: #ff6b3d;
-    }
+  &.warning {
+    background: linear-gradient(90deg, rgba(255, 165, 0, 0.05), rgba(255, 165, 0, 0.15));
+    color: #ffa500;
+  }
 
-    &.medium {
-      background: rgba(255, 165, 0, 0.15);
-      border-color: rgba(255, 165, 0, 0.4);
-      color: #ffa500;
-    }
-
-    &.low {
-      background: rgba(0, 255, 136, 0.15);
-      border-color: rgba(0, 255, 136, 0.4);
-      color: #00ff88;
-    }
+  &.danger {
+    background: linear-gradient(90deg, rgba(255, 107, 61, 0.05), rgba(255, 107, 61, 0.15));
+    color: #ff6b3d;
   }
 }
 
-.dual-cards {
+.trend-svg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.trend-point {
+  transition: all 0.3s;
+  cursor: pointer;
+
+  &:hover {
+    r: 5;
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+}
+
+/* 图表2: 多维体征叠加 */
+.chart-multi {
+  display: flex;
+  flex-direction: column;
+}
+
+.multi-dimension-chart {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.dimension-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: 12px;
 }
 
-/* 体征卡片 */
-.vitals-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+.dimension-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.vital-item {
-  background: rgba(45, 225, 255, 0.05);
-  border: 1px solid rgba(45, 225, 255, 0.1);
-  border-radius: 8px;
-  padding: 12px;
-  text-align: center;
-}
-
-.vital-label {
+.label-text {
   font-size: 12px;
   color: #8b92a7;
-  margin-bottom: 8px;
 }
 
-.vital-value {
-  font-size: 24px;
+.label-value {
+  font-size: 14px;
   font-weight: 700;
-  color: #2de1ff;
-  margin-bottom: 4px;
+  color: #e0e6ed;
 
   &.warning {
     color: #ff6b3d;
   }
+}
 
-  .unit {
-    font-size: 14px;
-    font-weight: 400;
-    margin-left: 2px;
+.dimension-graph {
+  flex: 1;
+}
+
+.graph-line {
+  height: 20px;
+  background: rgba(45, 225, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.graph-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  &.heart-rate {
+    background: linear-gradient(90deg, #2de1ff, #00ff88);
+  }
+
+  &.stress {
+    background: linear-gradient(90deg, #9b5bff, #ff6b3d);
+  }
+
+  &.perclos {
+    background: linear-gradient(90deg, #ffd700, #ff8c00);
   }
 }
 
-.vital-threshold {
-  font-size: 10px;
-  color: #6b7280;
-}
-
-/* 眼球检测卡片 */
-.eye-content {
-  display: flex;
-  gap: 20px;
-}
-
-.gauge-container {
-  flex-shrink: 0;
-}
-
-.gauge {
-  width: 140px;
-  height: 140px;
-  position: relative;
-  background: rgba(45, 225, 255, 0.05);
-  border-radius: 50%;
-  border: 3px solid rgba(45, 225, 255, 0.2);
-  overflow: hidden;
-}
-
-.gauge-fill {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  transform-origin: center;
-  clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%);
-  transition: all 0.5s;
-}
-
-.gauge-cover {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100px;
-  height: 100px;
-  background: rgba(20, 25, 45, 0.95);
-  border-radius: 50%;
+/* 图表3: 疲劳区段剖面 */
+.chart-zone {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
 }
 
-.gauge-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #2de1ff;
-}
-
-.gauge-label {
-  font-size: 11px;
-  color: #8b92a7;
-  margin-top: 4px;
-}
-
-.eye-metrics {
+.zone-ribbon {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.metric-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.metric-label {
-  font-size: 12px;
-  color: #8b92a7;
-}
-
-.metric-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #e0e6ed;
-}
-
-.metric-bar {
-  height: 6px;
-  background: rgba(45, 225, 255, 0.1);
-  border-radius: 3px;
+.ribbon-track {
+  position: relative;
+  height: 40px;
+  display: flex;
+  border-radius: 6px;
   overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s;
-
-  &.safe {
-    background: #00ff88;
-  }
-
-  &.warning {
-    background: #ffa500;
-  }
-
-  &.danger {
-    background: #ff6b3d;
-  }
-}
-
-/* 趋势图 */
-.trend-chart {
-  padding: 10px 0;
-}
-
-.chart-bars {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  height: 150px;
-  margin-bottom: 12px;
-}
-
-.chart-bar {
+.ribbon-zone {
   flex: 1;
+
+  &.safe-zone {
+    flex: 0.6;
+    background: linear-gradient(90deg, #00ff88, #2de1ff);
+  }
+
+  &.warning-zone {
+    flex: 0.2;
+    background: linear-gradient(90deg, #ffd700, #ff8c00);
+  }
+
+  &.danger-zone {
+    flex: 0.2;
+    background: linear-gradient(90deg, #ff8c00, #ff3d3d);
+  }
+}
+
+.current-position {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.position-marker {
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 3px solid #2de1ff;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(45, 225, 255, 0.8);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.position-label {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  color: #2de1ff;
+  background: rgba(20, 25, 45, 0.9);
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  border: 1px solid rgba(45, 225, 255, 0.3);
+}
+
+.ribbon-labels {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  padding: 0 4px;
 }
 
-.bar-column {
-  width: 24px;
-  border-radius: 4px 4px 0 0;
-  transition: all 0.3s;
-  min-height: 10%;
-
-  &.safe {
-    background: linear-gradient(180deg, #00ff88, #2de1ff);
-  }
-
-  &.warning {
-    background: linear-gradient(180deg, #ffa500, #ffd700);
-  }
-
-  &.danger {
-    background: linear-gradient(180deg, #ff3d3d, #ff6b3d);
-  }
-}
-
-.bar-label {
-  font-size: 11px;
+.zone-label {
+  font-size: 10px;
   color: #8b92a7;
 }
 
-.chart-legend {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  font-size: 12px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(45, 225, 255, 0.1);
-
-  .legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-
-    &.safe {
-      background: #00ff88;
-    }
-
-    &.warning {
-      background: #ffa500;
-    }
-
-    &.danger {
-      background: #ff6b3d;
-    }
-  }
-}
-
-/* 右侧列 */
+/* ========== 右侧列（实时告警流） ========== */
 .right-column {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
-/* 告警列表 */
 .alerts-card {
   flex: 1;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
-.alerts-list {
+.alerts-stream {
   flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
   }
 
   &::-webkit-scrollbar-track {
     background: rgba(45, 225, 255, 0.05);
-    border-radius: 3px;
+    border-radius: 2px;
   }
 
   &::-webkit-scrollbar-thumb {
     background: rgba(45, 225, 255, 0.2);
-    border-radius: 3px;
+    border-radius: 2px;
 
     &:hover {
       background: rgba(45, 225, 255, 0.3);
@@ -1401,54 +1384,58 @@ onUnmounted(() => {
   }
 }
 
-.alert-item {
+.alert-item-enhanced {
   display: flex;
-  gap: 12px;
-  padding: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  padding: 10px;
   background: rgba(45, 225, 255, 0.05);
   border: 1px solid rgba(45, 225, 255, 0.1);
   border-radius: 8px;
   position: relative;
   overflow: hidden;
+  transition: all 0.3s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(45, 225, 255, 0.08);
+    border-color: rgba(45, 225, 255, 0.2);
+  }
 }
 
-.alert-severity {
+.alert-severity-bar {
   width: 4px;
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  border-radius: 2px;
+  flex-shrink: 0;
 
   &.high {
-    background: #ff6b3d;
+    background: linear-gradient(180deg, #ff6b3d, #ff3d3d);
   }
 
   &.medium {
-    background: #ffa500;
+    background: linear-gradient(180deg, #ffa500, #ffd700);
   }
 
   &.low {
-    background: #2de1ff;
+    background: linear-gradient(180deg, #2de1ff, #00ff88);
   }
 }
 
-.alert-content {
+.alert-content-enhanced {
   flex: 1;
-  padding-left: 8px;
+  min-width: 0;
 }
 
-.alert-header {
+.alert-header-enhanced {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
-.severity-badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
+.severity-badge-enhanced {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
   font-weight: 600;
 
   &.high {
@@ -1468,131 +1455,174 @@ onUnmounted(() => {
 }
 
 .alert-time {
-  font-size: 11px;
+  font-size: 10px;
   color: #6b7280;
 }
 
-.alert-title {
-  font-size: 13px;
+.alert-title-enhanced {
+  font-size: 12px;
   color: #e0e6ed;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   line-height: 1.4;
 }
 
-.alert-meta {
-  font-size: 11px;
+.alert-meta-enhanced {
+  font-size: 10px;
   color: #8b92a7;
-  margin-bottom: 10px;
 
   .separator {
     margin: 0 4px;
   }
 }
 
-.alert-source {
-  font-style: italic;
+/* ========== 底部横向三栏 ========== */
+.bottom-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+  flex-shrink: 0;
 }
 
-.alert-action-btn {
-  background: rgba(45, 225, 255, 0.1);
-  border: 1px solid rgba(45, 225, 255, 0.3);
-  border-radius: 4px;
-  padding: 4px 12px;
-  font-size: 11px;
+.bottom-card {
+  background: rgba(20, 25, 45, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(45, 225, 255, 0.15);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.bottom-card-title {
+  font-size: 13px;
+  font-weight: 600;
   color: #2de1ff;
-  cursor: pointer;
-  transition: all 0.3s;
-
-  &:hover {
-    background: rgba(45, 225, 255, 0.2);
-    border-color: rgba(45, 225, 255, 0.5);
-  }
+  margin: 0 0 10px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(45, 225, 255, 0.2);
 }
 
-/* 班次统计 */
-.shift-item {
-  margin-bottom: 20px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
+/* 班次风险分布 */
+.shift-stats-horizontal {
+  display: flex;
+  gap: 12px;
 }
 
-.shift-header {
+.shift-item-h {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shift-header-h {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 13px;
+  align-items: center;
+  font-size: 11px;
 }
 
-.shift-name {
+.shift-name-h {
   color: #e0e6ed;
   font-weight: 600;
 }
 
-.shift-total {
+.shift-total-h {
   color: #8b92a7;
 }
 
-.shift-bar {
+.shift-bar-h {
   display: flex;
-  height: 8px;
-  border-radius: 4px;
+  height: 6px;
+  border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 6px;
 }
 
-.shift-counts {
+.shift-counts-h {
+  display: flex;
+  justify-content: space-around;
+  font-size: 11px;
+  font-weight: 600;
+
+  .count {
+    &.high {
+      color: #ff6b3d;
+    }
+
+    &.medium {
+      color: #ffa500;
+    }
+
+    &.low {
+      color: #00ff88;
+    }
+  }
+}
+
+/* 设备在线情况 */
+.device-status-horizontal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.device-item-h {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.device-info-h {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  padding: 0 4px;
 }
 
-.count-item {
+.device-name-h {
+  color: #e0e6ed;
+}
+
+.device-count-h {
+  color: #2de1ff;
   font-weight: 600;
+}
 
-  &.high {
-    color: #ff6b3d;
-  }
+.device-progress-h {
+  height: 6px;
+  background: rgba(45, 225, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
 
-  &.medium {
-    color: #ffa500;
-  }
-
-  &.low {
-    color: #00ff88;
-  }
+.progress-bar-h {
+  height: 100%;
+  background: linear-gradient(90deg, #2de1ff, #9b5bff);
+  border-radius: 3px;
+  transition: width 0.3s;
 }
 
 /* AI 建议 */
-.suggestions-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.ai-suggestions-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.suggestion-item {
-  font-size: 13px;
-  line-height: 1.6;
+.suggestion-compact {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.5;
   color: #b4bcc8;
-  margin-bottom: 16px;
-  padding-left: 16px;
-  position: relative;
+  padding: 8px;
+  background: rgba(45, 225, 255, 0.05);
+  border-radius: 6px;
+  border-left: 2px solid rgba(45, 225, 255, 0.3);
+}
 
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 8px;
-    width: 6px;
-    height: 6px;
-    background: linear-gradient(135deg, #2de1ff, #9b5bff);
-    border-radius: 50%;
-  }
+.suggestion-icon {
+  font-size: 14px;
+  flex-shrink: 0;
 }
 </style>
