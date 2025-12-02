@@ -142,53 +142,55 @@
           </div>
         </div>
 
-        <!-- 4层图表叠加区 -->
+        <!-- 三区图表：上部趋势 + 下部（疲劳构成 + 事件时间轴）-->
         <div class="professional-charts-pro">
-          <!-- 图层1: 疲劳主趋势图 + 体征叠加 + 预测 + 事件时间轴 -->
-          <div class="chart-layer chart-main-fatigue">
+          <!-- ① 上部：综合趋势图 + 预测（60%高度）-->
+          <div class="chart-layer chart-main-trend">
             <div class="chart-header-pro">
-              <h3 class="chart-title-pro">疲劳监控核心视图 · 最近30分钟 + 未来预测</h3>
+              <h3 class="chart-title-pro">综合疲劳监控 · 最近30分钟 + 未来10分钟预测</h3>
               <div class="chart-legend-pro">
                 <span class="legend-item-pro"><i class="dot fatigue"></i>疲劳评分</span>
-                <span class="legend-item-pro"><i class="dot heart"></i>心率</span>
-                <span class="legend-item-pro"><i class="dot stress"></i>压力</span>
-                <span class="legend-item-pro"><i class="dot perclos"></i>PERCLOS</span>
-                <span class="legend-item-pro"><i class="dot predict"></i>预测</span>
+                <span class="legend-item-pro"><i class="dot heart"></i>心率（标准化）</span>
+                <span class="legend-item-pro"><i class="dot stress"></i>压力指数</span>
+                <span class="legend-item-pro"><i class="dot predict"></i>未来预测</span>
               </div>
             </div>
 
             <div class="chart-canvas-pro">
-              <!-- 背景分区 -->
-              <div class="zone-bg-pro">
-                <div class="zone-layer danger-zone">高危区 &gt;80</div>
-                <div class="zone-layer warning-zone">警戒区 60-80</div>
-                <div class="zone-layer safe-zone">安全区 &lt;60</div>
+              <!-- 三段色带背景（更明显）-->
+              <div class="zone-bg-enhanced">
+                <div class="zone-segment danger" title="高危区 >80">
+                  <span class="zone-label">高危区 &gt;80</span>
+                </div>
+                <div class="zone-segment warning" title="警戒区 60-80">
+                  <span class="zone-label">警戒区 60-80</span>
+                </div>
+                <div class="zone-segment safe" title="安全区 <60">
+                  <span class="zone-label">安全区 &lt;60</span>
+                </div>
               </div>
 
-              <!-- SVG主图 -->
+              <!-- SVG多线趋势图 -->
               <svg class="main-svg-pro" viewBox="0 0 900 200" preserveAspectRatio="none">
                 <defs>
-                  <!-- 渐变定义 -->
                   <linearGradient id="fatigueGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" style="stop-color:#ff6b3d;stop-opacity:0.3" />
                     <stop offset="100%" style="stop-color:#ff6b3d;stop-opacity:0" />
                   </linearGradient>
-                  <linearGradient id="heartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style="stop-color:#2de1ff;stop-opacity:0.2" />
-                    <stop offset="100%" style="stop-color:#2de1ff;stop-opacity:0" />
-                  </linearGradient>
                 </defs>
 
-                <!-- 心率曲线（蓝线）-->
-                <path :d="heartRatePath" fill="none" stroke="#2de1ff" stroke-width="1.5" opacity="0.7" />
+                <!-- 压力指数曲线（紫色）-->
+                <path :d="stressLinePath" fill="none" stroke="#9b5bff" stroke-width="2" opacity="0.6" />
 
-                <!-- 压力指数面积图（紫色透明）-->
-                <path :d="stressAreaPath" fill="rgba(155, 91, 255, 0.15)" />
-                <path :d="stressLinePath" fill="none" stroke="#9b5bff" stroke-width="1.5" opacity="0.6" />
+                <!-- 心率曲线（青色）-->
+                <path :d="heartRatePath" fill="none" stroke="#2de1ff" stroke-width="2" opacity="0.7" />
 
-                <!-- 疲劳评分主曲线（红橙渐变） -->
+                <!-- 疲劳评分主曲线（橙红色，最粗）-->
                 <path :d="fatigueAreaPath" fill="url(#fatigueGrad)" />
-                <path :d="fatigueLinePath" fill="none" stroke="#ff6b3d" stroke-width="3" />
+                <path :d="fatigueLinePath" fill="none" stroke="#ff6b3d" stroke-width="3.5" />
+
+                <!-- 未来预测虚线（金色）-->
+                <path :d="predictPath" fill="none" stroke="#ffd700" stroke-width="2.5" stroke-dasharray="6,4" opacity="0.85" />
 
                 <!-- 疲劳评分数据点 -->
                 <circle
@@ -196,65 +198,87 @@
                   :key="'f-'+idx"
                   :cx="point.x"
                   :cy="point.y"
-                  r="4"
+                  r="4.5"
                   :fill="getPointColor(currentDriver?.fatigueTrend[idx])"
-                  class="data-point"
+                  class="data-point-enhanced"
                 />
 
-                <!-- 异常事件标注点 -->
-                <g v-for="(event, idx) in currentDriver?.events" :key="'e-'+idx">
+                <!-- 异常事件标注（用图标）-->
+                <g v-for="(event, idx) in currentDriver?.events" :key="'e-'+idx" class="event-icon-group">
                   <circle
                     :cx="event.x"
-                    :cy="event.y"
-                    r="6"
-                    fill="#ff3d3d"
-                    class="event-marker"
+                    :cy="event.y - 5"
+                    r="10"
+                    fill="rgba(255, 61, 61, 0.2)"
+                    stroke="#ff3d3d"
+                    stroke-width="2"
+                    class="event-marker-bg"
                   />
                   <text
                     :x="event.x"
-                    :y="event.y - 12"
-                    fill="#ff3d3d"
-                    font-size="10"
+                    :y="event.y - 1"
+                    font-size="14"
                     text-anchor="middle"
-                  >!</text>
+                    class="event-icon"
+                  >{{ event.icon }}</text>
                 </g>
-
-                <!-- 未来预测虚线 -->
-                <path :d="predictPath" fill="none" stroke="#ffd700" stroke-width="2" stroke-dasharray="5,5" opacity="0.8" />
               </svg>
-
-              <!-- 事件时间轴（底部）-->
-              <div class="event-timeline-pro">
-                <div
-                  v-for="(event, idx) in currentDriver?.eventsList"
-                  :key="'evt-'+idx"
-                  class="timeline-event"
-                  :style="{ left: event.position + '%' }"
-                >
-                  <div class="event-dot" :class="event.severity"></div>
-                  <div class="event-label">{{ event.label }}</div>
-                </div>
-              </div>
             </div>
           </div>
 
-          <!-- 图层2: PERCLOS详细曲线 -->
-          <div class="chart-layer chart-perclos-detail">
-            <div class="chart-header-pro">
-              <h3 class="chart-title-pro">PERCLOS 眼部疲劳详细监测</h3>
-            </div>
-            <div class="perclos-bars-pro">
-              <div
-                v-for="(val, idx) in currentDriver?.perclosTrend"
-                :key="'p-'+idx"
-                class="perclos-bar-item"
-              >
+          <!-- ② ③ 下部：左右两栏（40%高度）-->
+          <div class="chart-bottom-row">
+            <!-- ② 左：疲劳构成分析 -->
+            <div class="chart-layer chart-composition">
+              <div class="chart-header-pro">
+                <h3 class="chart-title-pro">疲劳评分构成分析 · 当前 {{ currentDriver?.fatigueScore }} 分</h3>
+              </div>
+              <div class="composition-bars">
                 <div
-                  class="perclos-bar-fill"
-                  :class="getPerclosClass(val)"
-                  :style="{ height: val + '%' }"
-                ></div>
-                <span class="perclos-bar-label">{{ (idx + 1) * 5 }}m</span>
+                  v-for="(item, key) in currentDriver?.fatigueComposition"
+                  :key="key"
+                  class="composition-item"
+                >
+                  <div class="composition-label">{{ item.label }}</div>
+                  <div class="composition-bar-wrapper">
+                    <div
+                      class="composition-bar-fill"
+                      :class="getCompositionClass(key)"
+                      :style="{ width: item.value + '%' }"
+                    >
+                      <span class="composition-value">{{ item.value }}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ③ 右：事件时间轴 -->
+            <div class="chart-layer chart-timeline">
+              <div class="chart-header-pro">
+                <h3 class="chart-title-pro">异常事件时间轴 · 最近30分钟</h3>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-axis"></div>
+                <div
+                  v-for="(event, idx) in currentDriver?.eventsList"
+                  :key="'tl-'+idx"
+                  class="timeline-event-item"
+                  :style="{ left: event.position + '%' }"
+                  :class="event.severity"
+                >
+                  <div class="timeline-event-marker">
+                    <span class="timeline-icon">{{ event.icon }}</span>
+                  </div>
+                  <div class="timeline-event-info">
+                    <div class="timeline-event-time">{{ event.time }}</div>
+                    <div class="timeline-event-label">{{ event.label }}</div>
+                  </div>
+                </div>
+                <!-- 时间刻度 -->
+                <div class="timeline-scale">
+                  <span v-for="i in 7" :key="'ts-'+i" class="timeline-tick">{{ (i-1) * 5 }}min</span>
+                </div>
               </div>
             </div>
           </div>
@@ -443,14 +467,21 @@ const drivers = ref([
     stressTrend: [45, 52, 58, 65, 70, 75, 78],
     perclosTrend: [12, 18, 22, 28, 31, 33, 34],
     predictTrend: [87, 89, 91],
+    fatigueComposition: {
+      drivingDuration: { value: 35, label: '连续驾驶5.5h' },
+      perclos: { value: 30, label: '眼部疲劳（PERCLOS 34%）' },
+      heartRate: { value: 20, label: '心率异常（104 bpm）' },
+      environment: { value: 10, label: '夜间驾驶' },
+      historyFatigue: { value: 5, label: '前48h基础疲劳' }
+    },
     events: [
-      { x: 500, y: 40, time: '08:40', label: '打盹检测' },
-      { x: 700, y: 30, time: '09:12', label: '闭眼率飙升' }
+      { x: 500, y: 40, time: '08:40', label: '打盹检测', type: 'sleep', icon: '😴' },
+      { x: 700, y: 30, time: '09:12', label: '闭眼率飙升', type: 'eye', icon: '👁️' }
     ],
     eventsList: [
-      { position: 30, label: '心率↑', severity: 'medium' },
-      { position: 55, label: '打盹', severity: 'high' },
-      { position: 78, label: '闭眼↑', severity: 'high' }
+      { position: 30, time: '08:05', label: '心率>100', severity: 'medium', type: 'heart', icon: '❤️' },
+      { position: 55, time: '08:40', label: '打盹检测', severity: 'high', type: 'sleep', icon: '😴' },
+      { position: 78, time: '09:12', label: '闭眼率>30%', severity: 'high', type: 'eye', icon: '👁️' }
     ]
   },
   {
@@ -470,12 +501,19 @@ const drivers = ref([
     stressTrend: [42, 48, 55, 62, 68, 70, 72],
     perclosTrend: [10, 15, 19, 23, 26, 27, 28],
     predictTrend: [82, 84, 85],
+    fatigueComposition: {
+      drivingDuration: { value: 33, label: '连续驾驶4.8h' },
+      perclos: { value: 28, label: '眼部疲劳（PERCLOS 28%）' },
+      heartRate: { value: 22, label: '心率异常（98 bpm）' },
+      environment: { value: 12, label: '夜间驾驶' },
+      historyFatigue: { value: 5, label: '前48h基础疲劳' }
+    },
     events: [
-      { x: 600, y: 50, time: '08:55', label: '方向偏移' }
+      { x: 600, y: 50, time: '08:55', label: '方向偏移', type: 'direction', icon: '🔄' }
     ],
     eventsList: [
-      { position: 45, label: '哈欠', severity: 'medium' },
-      { position: 67, label: '偏移', severity: 'high' }
+      { position: 45, time: '08:30', label: '哈欠', severity: 'medium', type: 'sleep', icon: '😴' },
+      { position: 67, time: '08:55', label: '偏移', severity: 'high', type: 'direction', icon: '🔄' }
     ]
   },
   {
@@ -495,9 +533,16 @@ const drivers = ref([
     stressTrend: [38, 42, 48, 52, 55, 57, 58],
     perclosTrend: [8, 11, 14, 16, 17, 18, 18],
     predictTrend: [68, 69, 70],
+    fatigueComposition: {
+      drivingDuration: { value: 30, label: '连续驾驶3.2h' },
+      perclos: { value: 24, label: '眼部疲劳（PERCLOS 18%）' },
+      heartRate: { value: 18, label: '心率异常（88 bpm）' },
+      environment: { value: 16, label: '白班驾驶' },
+      historyFatigue: { value: 12, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: [
-      { position: 40, label: '压力↑', severity: 'medium' }
+      { position: 40, time: '08:45', label: '压力↑', severity: 'medium', type: 'heart', icon: '❤️' }
     ]
   },
   {
@@ -517,6 +562,13 @@ const drivers = ref([
     stressTrend: [35, 40, 44, 48, 50, 51, 52],
     perclosTrend: [6, 9, 12, 14, 15, 15, 15],
     predictTrend: [62, 61, 60],
+    fatigueComposition: {
+      drivingDuration: { value: 28, label: '连续驾驶2.8h' },
+      perclos: { value: 20, label: '眼部疲劳（PERCLOS 15%）' },
+      heartRate: { value: 16, label: '心率异常（82 bpm）' },
+      environment: { value: 18, label: '早班驾驶' },
+      historyFatigue: { value: 18, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: []
   },
@@ -537,9 +589,16 @@ const drivers = ref([
     stressTrend: [40, 46, 52, 58, 62, 63, 64],
     perclosTrend: [10, 14, 18, 20, 21, 22, 22],
     predictTrend: [71, 73, 75],
+    fatigueComposition: {
+      drivingDuration: { value: 32, label: '连续驾驶4.1h' },
+      perclos: { value: 25, label: '眼部疲劳（PERCLOS 22%）' },
+      heartRate: { value: 19, label: '心率异常（92 bpm）' },
+      environment: { value: 14, label: '夜间驾驶' },
+      historyFatigue: { value: 10, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: [
-      { position: 50, label: '哈欠', severity: 'medium' }
+      { position: 50, time: '08:50', label: '哈欠', severity: 'medium', type: 'sleep', icon: '😴' }
     ]
   },
   {
@@ -559,6 +618,13 @@ const drivers = ref([
     stressTrend: [32, 35, 38, 40, 41, 42, 42],
     perclosTrend: [4, 6, 7, 8, 8, 8, 8],
     predictTrend: [45, 45, 44],
+    fatigueComposition: {
+      drivingDuration: { value: 22, label: '连续驾驶2.1h' },
+      perclos: { value: 12, label: '眼部疲劳（PERCLOS 8%）' },
+      heartRate: { value: 10, label: '心率正常（75 bpm）' },
+      environment: { value: 26, label: '白班驾驶' },
+      historyFatigue: { value: 30, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: []
   },
@@ -579,6 +645,13 @@ const drivers = ref([
     stressTrend: [28, 30, 32, 34, 35, 35, 35],
     perclosTrend: [3, 4, 5, 5, 5, 5, 5],
     predictTrend: [38, 38, 37],
+    fatigueComposition: {
+      drivingDuration: { value: 18, label: '连续驾驶1.5h' },
+      perclos: { value: 8, label: '眼部疲劳（PERCLOS 5%）' },
+      heartRate: { value: 8, label: '心率正常（72 bpm）' },
+      environment: { value: 28, label: '早班驾驶' },
+      historyFatigue: { value: 38, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: []
   },
@@ -599,6 +672,13 @@ const drivers = ref([
     stressTrend: [30, 32, 34, 36, 37, 38, 38],
     perclosTrend: [3, 4, 5, 6, 6, 6, 6],
     predictTrend: [41, 41, 40],
+    fatigueComposition: {
+      drivingDuration: { value: 20, label: '连续驾驶1.8h' },
+      perclos: { value: 9, label: '眼部疲劳（PERCLOS 6%）' },
+      heartRate: { value: 9, label: '心率正常（78 bpm）' },
+      environment: { value: 26, label: '白班驾驶' },
+      historyFatigue: { value: 36, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: []
   },
@@ -619,6 +699,13 @@ const drivers = ref([
     stressTrend: [26, 28, 30, 31, 32, 32, 32],
     perclosTrend: [2, 3, 4, 4, 4, 4, 4],
     predictTrend: [35, 34, 33],
+    fatigueComposition: {
+      drivingDuration: { value: 16, label: '连续驾驶1.2h' },
+      perclos: { value: 6, label: '眼部疲劳（PERCLOS 4%）' },
+      heartRate: { value: 7, label: '心率正常（70 bpm）' },
+      environment: { value: 29, label: '早班驾驶' },
+      historyFatigue: { value: 42, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: []
   },
@@ -639,9 +726,16 @@ const drivers = ref([
     stressTrend: [36, 42, 46, 50, 53, 54, 55],
     perclosTrend: [7, 10, 13, 15, 16, 16, 16],
     predictTrend: [65, 67, 68],
+    fatigueComposition: {
+      drivingDuration: { value: 29, label: '连续驾驶3.5h' },
+      perclos: { value: 22, label: '眼部疲劳（PERCLOS 16%）' },
+      heartRate: { value: 17, label: '心率异常（85 bpm）' },
+      environment: { value: 18, label: '白班驾驶' },
+      historyFatigue: { value: 14, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: [
-      { position: 55, label: '压力↑', severity: 'medium' }
+      { position: 55, time: '08:55', label: '压力↑', severity: 'medium', type: 'heart', icon: '❤️' }
     ]
   },
   {
@@ -661,12 +755,19 @@ const drivers = ref([
     stressTrend: [40, 48, 55, 62, 66, 68, 70],
     perclosTrend: [10, 15, 20, 23, 25, 26, 26],
     predictTrend: [79, 81, 83],
+    fatigueComposition: {
+      drivingDuration: { value: 34, label: '连续驾驶4.5h' },
+      perclos: { value: 27, label: '眼部疲劳（PERCLOS 26%）' },
+      heartRate: { value: 21, label: '心率异常（96 bpm）' },
+      environment: { value: 11, label: '夜间驾驶' },
+      historyFatigue: { value: 7, label: '前48h基础疲劳' }
+    },
     events: [
-      { x: 550, y: 45, time: '08:50', label: '哈欠频繁' }
+      { x: 550, y: 45, time: '08:50', label: '哈欠频繁', type: 'sleep', icon: '😴' }
     ],
     eventsList: [
-      { position: 50, label: '哈欠', severity: 'medium' },
-      { position: 72, label: '眼闭↑', severity: 'high' }
+      { position: 50, time: '08:50', label: '哈欠', severity: 'medium', type: 'sleep', icon: '😴' },
+      { position: 72, time: '09:10', label: '眼闭↑', severity: 'high', type: 'eye', icon: '👁️' }
     ]
   },
   {
@@ -686,6 +787,13 @@ const drivers = ref([
     stressTrend: [32, 34, 36, 38, 39, 40, 40],
     perclosTrend: [4, 5, 6, 7, 7, 7, 7],
     predictTrend: [42, 42, 41],
+    fatigueComposition: {
+      drivingDuration: { value: 21, label: '连续驾驶1.9h' },
+      perclos: { value: 10, label: '眼部疲劳（PERCLOS 7%）' },
+      heartRate: { value: 9, label: '心率正常（76 bpm）' },
+      environment: { value: 26, label: '早班驾驶' },
+      historyFatigue: { value: 34, label: '前48h基础疲劳' }
+    },
     events: [],
     eventsList: []
   }
@@ -986,6 +1094,18 @@ const getPerclosClass = (value) => {
   if (value > 30) return 'danger'
   if (value > 20) return 'warning'
   return 'safe'
+}
+
+// 疲劳构成条颜色分类
+const getCompositionClass = (key) => {
+  const classMap = {
+    drivingDuration: 'comp-duration',
+    perclos: 'comp-perclos',
+    heartRate: 'comp-heart',
+    environment: 'comp-env',
+    historyFatigue: 'comp-history'
+  }
+  return classMap[key] || 'comp-default'
 }
 
 // 生命周期
@@ -1484,7 +1604,7 @@ onUnmounted(() => {
   }
 }
 
-/* 4层图表区 */
+/* 三区图表区 */
 .professional-charts-pro {
   flex: 1;
   display: flex;
@@ -1502,16 +1622,19 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.chart-main-fatigue {
-  flex: 1;
+.chart-main-trend {
+  flex: 1.5;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.chart-perclos-detail {
-  height: 100px;
+.chart-bottom-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 10px;
   flex-shrink: 0;
+  height: 140px;
 }
 
 .chart-header-pro {
@@ -1561,7 +1684,8 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.zone-bg-pro {
+/* 三段色带背景（增强版）*/
+.zone-bg-enhanced {
   position: absolute;
   width: 100%;
   height: 100%;
@@ -1570,30 +1694,38 @@ onUnmounted(() => {
   z-index: 0;
 }
 
-.zone-layer {
+.zone-segment {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding-right: 10px;
-  font-size: 9px;
-  font-weight: 600;
-  opacity: 0.5;
+  padding-right: 12px;
+  position: relative;
 
-  &.danger-zone {
-    background: linear-gradient(90deg, rgba(255, 61, 61, 0.05), rgba(255, 61, 61, 0.12));
-    color: #ff3d3d;
+  &.danger {
+    background: linear-gradient(90deg, rgba(255, 61, 61, 0.08), rgba(255, 61, 61, 0.15));
+    border-bottom: 1px solid rgba(255, 61, 61, 0.3);
   }
 
-  &.warning-zone {
-    background: linear-gradient(90deg, rgba(255, 165, 0, 0.05), rgba(255, 165, 0, 0.12));
-    color: #ffa500;
+  &.warning {
+    background: linear-gradient(90deg, rgba(255, 165, 0, 0.08), rgba(255, 165, 0, 0.15));
+    border-bottom: 1px solid rgba(255, 165, 0, 0.3);
   }
 
-  &.safe-zone {
-    background: linear-gradient(90deg, rgba(0, 255, 136, 0.05), rgba(0, 255, 136, 0.12));
-    color: #00ff88;
+  &.safe {
+    background: linear-gradient(90deg, rgba(0, 255, 136, 0.08), rgba(0, 255, 136, 0.15));
   }
+}
+
+.zone-label {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+
+  .danger & { color: #ff6b3d; }
+  .warning & { color: #ffa500; }
+  .safe & { color: #00ff88; }
 }
 
 .main-svg-pro {
@@ -1603,99 +1735,229 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-.data-point {
+/* 数据点增强版 */
+.data-point-enhanced {
   transition: all 0.3s;
   cursor: pointer;
+  filter: drop-shadow(0 0 2px currentColor);
 
   &:hover {
-    r: 6;
-    filter: drop-shadow(0 0 4px currentColor);
+    r: 6.5;
+    filter: drop-shadow(0 0 6px currentColor);
   }
 }
 
-.event-marker {
-  animation: alertPulse 2s ease-in-out infinite;
+/* 事件图标标记 */
+.event-icon-group {
   cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    transform: scale(1.15);
+  }
 }
 
-@keyframes alertPulse {
+.event-marker-bg {
+  animation: eventPulse 2.5s ease-in-out infinite;
+}
+
+.event-icon {
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes eventPulse {
   0%, 100% {
-    opacity: 1;
-    r: 6;
+    opacity: 0.8;
+    r: 10;
   }
   50% {
-    opacity: 0.6;
-    r: 8;
+    opacity: 1;
+    r: 12;
   }
 }
 
-.event-timeline-pro {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 20px;
-  z-index: 2;
-}
-
-.timeline-event {
-  position: absolute;
+/* ========== ② 疲劳构成条 ========== */
+.chart-composition {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  transform: translateX(-50%);
 }
 
-.event-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-bottom: 2px;
-
-  &.high { background: #ff3d3d; }
-  &.medium { background: #ffa500; }
-}
-
-.event-label {
-  font-size: 9px;
-  color: #8b92a7;
-  white-space: nowrap;
-  background: rgba(20, 25, 45, 0.8);
-  padding: 1px 4px;
-  border-radius: 2px;
-}
-
-/* PERCLOS详细图 */
-.perclos-bars-pro {
+.composition-bars {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  height: 60px;
-  gap: 4px;
+  flex-direction: column;
+  gap: 8px;
   padding: 5px 0;
 }
 
-.perclos-bar-item {
+.composition-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.composition-label {
+  font-size: 10px;
+  color: #8b92a7;
+  font-weight: 500;
+}
+
+.composition-bar-wrapper {
+  width: 100%;
+  height: 16px;
+  background: rgba(45, 225, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(45, 225, 255, 0.15);
+}
+
+.composition-bar-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  transition: width 0.5s ease;
+  position: relative;
+
+  &.comp-duration {
+    background: linear-gradient(90deg, #9b5bff, #c77dff);
+  }
+
+  &.comp-perclos {
+    background: linear-gradient(90deg, #ffa500, #ffd700);
+  }
+
+  &.comp-heart {
+    background: linear-gradient(90deg, #ff6b3d, #ff9966);
+  }
+
+  &.comp-env {
+    background: linear-gradient(90deg, #2de1ff, #4facfe);
+  }
+
+  &.comp-history {
+    background: linear-gradient(90deg, #8b92a7, #b0b7c3);
+  }
+}
+
+.composition-value {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* ========== ③ 事件时间轴 ========== */
+.chart-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-container {
+  position: relative;
   flex: 1;
+  padding: 15px 10px 25px 10px;
+}
+
+.timeline-axis {
+  position: absolute;
+  top: 30px;
+  left: 10px;
+  right: 10px;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(45, 225, 255, 0.3), rgba(155, 91, 255, 0.3));
+  border-radius: 2px;
+}
+
+.timeline-event-item {
+  position: absolute;
+  top: 8px;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateX(-50%) scale(1.1);
+    z-index: 10;
+
+    .timeline-event-info {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
-.perclos-bar-fill {
-  width: 100%;
-  border-radius: 3px 3px 0 0;
-  transition: height 0.3s;
+.timeline-event-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
 
-  &.safe { background: linear-gradient(180deg, #00ff88, #2de1ff); }
-  &.warning { background: linear-gradient(180deg, #ffa500, #ffd700); }
-  &.danger { background: linear-gradient(180deg, #ff3d3d, #ff6b3d); }
+  .high & {
+    background: rgba(255, 61, 61, 0.2);
+    border: 2px solid #ff3d3d;
+    box-shadow: 0 0 12px rgba(255, 61, 61, 0.6);
+  }
+
+  .medium & {
+    background: rgba(255, 165, 0, 0.2);
+    border: 2px solid #ffa500;
+    box-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
+  }
 }
 
-.perclos-bar-label {
+.timeline-icon {
+  font-size: 14px;
+}
+
+.timeline-event-info {
+  position: absolute;
+  top: 100%;
+  margin-top: 8px;
+  background: rgba(20, 25, 45, 0.95);
+  border: 1px solid rgba(45, 225, 255, 0.3);
+  border-radius: 5px;
+  padding: 4px 7px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.3s;
+  pointer-events: none;
+}
+
+.timeline-event-time {
   font-size: 9px;
-  color: #8b92a7;
+  color: #2de1ff;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.timeline-event-label {
+  font-size: 10px;
+  color: #e0e6ed;
+}
+
+.timeline-scale {
+  position: absolute;
+  bottom: 0;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.timeline-tick {
+  font-size: 9px;
+  color: #6b7280;
 }
 
 /* ========== 右侧列（分级告警）========== */
