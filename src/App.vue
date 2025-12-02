@@ -91,25 +91,33 @@
               :class="{ active: currentDriver?.id === driver.id }"
               @click="selectDriver(driver)"
             >
-              <!-- 第一行：姓名 + 线路 + 疲劳分 + 级别 -->
-              <div class="rank-row-1">
-                <div class="rank-name-group">
-                  <span class="rank-name">{{ driver.name }}</span>
-                  <span class="rank-line">{{ driver.line }}</span>
-                </div>
-                <div class="rank-score-group">
-                  <span class="rank-trend" :class="driver.trend">{{ getTrendIcon(driver.trend) }}</span>
-                  <span class="rank-score" :class="driver.riskLevel">{{ driver.fatigueScore }}</span>
-                  <span class="rank-badge" :class="driver.riskLevel">{{ riskLabelMap[driver.riskLevel] }}</span>
-                </div>
+              <!-- 头像 -->
+              <div class="driver-avatar" :style="{ background: getAvatarGradient(driver.id) }">
+                {{ getDriverInitial(driver.name) }}
               </div>
-              <!-- 第二行：驾驶时长 + 体征标签 + 告警次数 -->
-              <div class="rank-row-2">
-                <span class="rank-drive-time">驾驶 {{ driver.driveHours }}h</span>
-                <span class="rank-vital">❤️{{ driver.vitals.heartRate }}</span>
-                <span class="rank-vital">HRV{{ driver.vitals.stressIndex }}</span>
-                <span class="rank-vital">眼{{ driver.eye.perclos }}%</span>
-                <span class="rank-alerts" v-if="driver.alertCount > 0">⚠️{{ driver.alertCount }}</span>
+
+              <!-- 右侧信息 -->
+              <div class="driver-rank-info">
+                <!-- 第一行：姓名 + 线路 + 疲劳分 + 级别 -->
+                <div class="rank-row-1">
+                  <div class="rank-name-group">
+                    <span class="rank-name">{{ driver.name }}</span>
+                    <span class="rank-line">{{ driver.line }}</span>
+                  </div>
+                  <div class="rank-score-group">
+                    <span class="rank-trend" :class="driver.trend">{{ getTrendIcon(driver.trend) }}</span>
+                    <span class="rank-score" :class="driver.riskLevel">{{ driver.fatigueScore }}</span>
+                    <span class="rank-badge" :class="driver.riskLevel">{{ riskLabelMap[driver.riskLevel] }}</span>
+                  </div>
+                </div>
+                <!-- 第二行：驾驶时长 + 体征标签 + 告警次数 -->
+                <div class="rank-row-2">
+                  <span class="rank-drive-time">驾驶 {{ driver.driveHours }}h</span>
+                  <span class="rank-vital">❤️{{ driver.vitals.heartRate }}</span>
+                  <span class="rank-vital">HRV{{ driver.vitals.stressIndex }}</span>
+                  <span class="rank-vital">眼{{ driver.eye.perclos }}%</span>
+                  <span class="rank-alerts" v-if="driver.alertCount > 0">⚠️{{ driver.alertCount }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -277,26 +285,28 @@
             </div>
           </div>
 
-          <div class="alerts-stream-pro">
-            <div
-              v-for="alert in filteredAlerts"
-              :key="alert.id"
-              class="alert-item-pro"
-              :class="alert.severity"
-            >
-              <div class="alert-severity-stripe" :class="alert.severity"></div>
-              <div class="alert-content-pro">
-                <div class="alert-header-row">
-                  <span class="alert-badge-pro" :class="alert.severity">{{ severityMap[alert.severity] }}</span>
-                  <span class="alert-time-pro">{{ alert.time }}</span>
+          <div class="alerts-stream-pro" ref="alertsContainer" @mouseenter="pauseScroll" @mouseleave="resumeScroll">
+            <div class="alerts-scroll-wrapper" :style="{ transform: `translateY(-${scrollOffset}px)` }">
+              <div
+                v-for="alert in displayAlerts"
+                :key="alert.uniqueId"
+                class="alert-item-pro"
+                :class="alert.severity"
+              >
+                <div class="alert-severity-stripe" :class="alert.severity"></div>
+                <div class="alert-content-pro">
+                  <div class="alert-header-row">
+                    <span class="alert-badge-pro" :class="alert.severity">{{ severityMap[alert.severity] }}</span>
+                    <span class="alert-time-pro">{{ alert.time }}</span>
+                  </div>
+                  <div class="alert-title-pro">{{ alert.title }}</div>
+                  <div class="alert-meta-pro">
+                    <span>{{ alert.driver }}</span>
+                    <span class="sep">·</span>
+                    <span>{{ alert.line }}</span>
+                  </div>
+                  <button class="alert-action-pro">查看详情</button>
                 </div>
-                <div class="alert-title-pro">{{ alert.title }}</div>
-                <div class="alert-meta-pro">
-                  <span>{{ alert.driver }}</span>
-                  <span class="sep">·</span>
-                  <span>{{ alert.line }}</span>
-                </div>
-                <button class="alert-action-pro">查看详情</button>
               </div>
             </div>
           </div>
@@ -821,6 +831,69 @@ const getTrendIcon = (trend) => {
   return '→'
 }
 
+// 头像相关函数
+const getDriverInitial = (name) => {
+  return name ? name.charAt(0) : '?'
+}
+
+const getAvatarGradient = (id) => {
+  const gradients = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    'linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)',
+    'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)',
+    'linear-gradient(135deg, #fdcbf1 0%, #e6dee9 100%)',
+    'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
+    'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)'
+  ]
+  return gradients[(id - 1) % gradients.length]
+}
+
+// 告警滚动相关
+const alertsContainer = ref(null)
+const scrollOffset = ref(0)
+const isScrollPaused = ref(false)
+let scrollInterval = null
+
+// 复制告警列表以实现无缝滚动
+const displayAlerts = computed(() => {
+  const filtered = filteredAlerts.value
+  // 复制两份用于无缝循环
+  return [...filtered, ...filtered].map((alert, index) => ({
+    ...alert,
+    uniqueId: `${alert.id}-${index}`
+  }))
+})
+
+const pauseScroll = () => {
+  isScrollPaused.value = true
+}
+
+const resumeScroll = () => {
+  isScrollPaused.value = false
+}
+
+const startAutoScroll = () => {
+  scrollInterval = setInterval(() => {
+    if (!isScrollPaused.value) {
+      scrollOffset.value += 0.5
+
+      // 计算单组告警的总高度（每个告警约110px）
+      const singleGroupHeight = filteredAlerts.value.length * 110
+
+      // 当滚动超过一组的高度时，重置回0实现无缝循环
+      if (scrollOffset.value >= singleGroupHeight) {
+        scrollOffset.value = 0
+      }
+    }
+  }, 30)
+}
+
 // SVG 路径计算
 const createPath = (data, width, height, yMax = 100) => {
   if (!data || data.length === 0) return ''
@@ -919,11 +992,15 @@ const getPerclosClass = (value) => {
 onMounted(() => {
   updateTime()
   timeInterval = setInterval(updateTime, 1000)
+  startAutoScroll()
 })
 
 onUnmounted(() => {
   if (timeInterval) {
     clearInterval(timeInterval)
+  }
+  if (scrollInterval) {
+    clearInterval(scrollInterval)
   }
 })
 </script>
@@ -1197,8 +1274,9 @@ onUnmounted(() => {
 
 .driver-rank-item {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   padding: 6px 8px;
   background: rgba(45, 225, 255, 0.05);
   border: 1px solid rgba(45, 225, 255, 0.1);
@@ -1218,6 +1296,28 @@ onUnmounted(() => {
     border-color: rgba(45, 225, 255, 0.5);
     box-shadow: 0 0 10px rgba(45, 225, 255, 0.2);
   }
+}
+
+.driver-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.driver-rank-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .rank-row-1 {
@@ -1663,19 +1763,19 @@ onUnmounted(() => {
 
 .alerts-stream-pro {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
+  position: relative;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.alerts-scroll-wrapper {
   display: flex;
   flex-direction: column;
   gap: 8px;
-
-  &::-webkit-scrollbar {
-    width: 3px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(45, 225, 255, 0.2);
-    border-radius: 2px;
-  }
+  transition: transform 0.05s linear;
 }
 
 .alert-item-pro {
