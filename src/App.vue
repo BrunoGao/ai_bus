@@ -110,13 +110,21 @@
                     <span class="rank-badge" :class="driver.riskLevel">{{ riskLabelMap[driver.riskLevel] }}</span>
                   </div>
                 </div>
-                <!-- 第二行：驾驶时长 + 体征标签 + 告警次数 -->
+                <!-- 第二行：睡眠数据 -->
                 <div class="rank-row-2">
-                  <span class="rank-drive-time">驾驶 {{ driver.driveHours }}h</span>
-                  <span class="rank-vital">❤️{{ driver.vitals.heartRate }}</span>
-                  <span class="rank-vital">HRV{{ driver.vitals.stressIndex }}</span>
-                  <span class="rank-vital">眼{{ driver.eye.perclos }}%</span>
-                  <span class="rank-alerts" v-if="driver.alertCount > 0">⚠️{{ driver.alertCount }}</span>
+                  <span class="rank-sleep">😴 昨晚 {{ driver.sleep.lastNightDuration }}h · 深睡{{ driver.sleep.deepSleepRatio }}%</span>
+                </div>
+                <!-- 第三行：心率偏离 -->
+                <div class="rank-row-3">
+                  <span class="rank-hr-deviation">❤️ 心率偏离 +{{ driver.vitals.heartRateDeviation }} ({{ driver.vitals.heartRate }}/{{ driver.vitals.heartRateBaseline }})</span>
+                </div>
+                <!-- 第四行：疲劳评分条（更醒目的渐变）-->
+                <div class="rank-row-4">
+                  <div class="fatigue-bar-enhanced">
+                    <div class="fatigue-fill" :class="driver.riskLevel" :style="{ width: driver.fatigueScore + '%' }">
+                      <span class="fatigue-score-text">{{ driver.fatigueScore }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -149,9 +157,9 @@
             <div class="chart-header-pro">
               <h3 class="chart-title-pro">综合疲劳监控 · 最近30分钟 + 未来10分钟预测</h3>
               <div class="chart-legend-pro">
-                <span class="legend-item-pro"><i class="dot fatigue"></i>疲劳评分</span>
-                <span class="legend-item-pro"><i class="dot heart"></i>心率（标准化）</span>
-                <span class="legend-item-pro"><i class="dot stress"></i>压力指数</span>
+                <span class="legend-item-pro"><i class="dot fatigue"></i>综合疲劳</span>
+                <span class="legend-item-pro"><i class="dot visual"></i>视觉疲劳</span>
+                <span class="legend-item-pro"><i class="dot physio"></i>生理疲劳</span>
                 <span class="legend-item-pro"><i class="dot predict"></i>未来预测</span>
               </div>
             </div>
@@ -179,13 +187,13 @@
                   </linearGradient>
                 </defs>
 
-                <!-- 压力指数曲线（紫色）-->
-                <path :d="stressLinePath" fill="none" stroke="#9b5bff" stroke-width="2" opacity="0.6" />
+                <!-- 生理疲劳曲线（绿色）-->
+                <path :d="physioFatigueLinePath" fill="none" stroke="#00ff88" stroke-width="2.5" opacity="0.7" />
 
-                <!-- 心率曲线（青色）-->
-                <path :d="heartRatePath" fill="none" stroke="#2de1ff" stroke-width="2" opacity="0.7" />
+                <!-- 视觉疲劳曲线（蓝色）-->
+                <path :d="visualFatigueLinePath" fill="none" stroke="#2de1ff" stroke-width="2.5" opacity="0.7" />
 
-                <!-- 疲劳评分主曲线（橙红色，最粗）-->
+                <!-- 综合疲劳评分主曲线（橙红色，最粗）-->
                 <path :d="fatigueAreaPath" fill="url(#fatigueGrad)" />
                 <path :d="fatigueLinePath" fill="none" stroke="#ff6b3d" stroke-width="3.5" />
 
@@ -285,8 +293,19 @@
         </div>
       </section>
 
-      <!-- 右侧列（分级告警流）-->
+      <!-- 右侧列（视频+告警+统计）-->
       <aside class="right-column">
+        <!-- 视频预览卡片 -->
+        <section class="card video-preview-card">
+          <div class="video-mock-frame">
+            <div class="video-overlay">
+              <span class="video-label">{{ currentDriver?.name }} · 实时监控</span>
+              <span class="perclos-overlay">PERCLOS: {{ currentDriver?.eye.perclos }}%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 告警流卡片 -->
         <section class="card alerts-card-pro">
           <div class="alerts-header-pro">
             <h2 class="card-title-mini">实时告警流</h2>
@@ -329,86 +348,121 @@
                     <span class="sep">·</span>
                     <span>{{ alert.line }}</span>
                   </div>
-                  <button class="alert-action-pro">查看详情</button>
+                  <div class="alert-actions">
+                    <button class="action-btn remind">提醒</button>
+                    <button class="action-btn contact">联系</button>
+                    <button class="action-btn ignore">忽略</button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
+
+        <!-- 今日统计卡片 -->
+        <section class="card stats-card-mini">
+          <div class="stat-item-inline">
+            <span class="stat-label">今日预警</span>
+            <span class="stat-value">24次</span>
+          </div>
+          <div class="stat-item-inline">
+            <span class="stat-label">处理率</span>
+            <span class="stat-value">87%</span>
+          </div>
+          <div class="stat-item-inline">
+            <span class="stat-label">响应时间</span>
+            <span class="stat-value">2.3min</span>
+          </div>
+        </section>
       </aside>
     </main>
 
-    <!-- 底部三栏（增强版）-->
-    <footer class="bottom-bar-pro">
-      <!-- 班次风险分布（堆叠柱状图）-->
-      <section class="bottom-card-pro">
-        <h3 class="bottom-title-pro">班次风险分布</h3>
-        <div class="shift-chart-pro">
-          <div v-for="shift in shiftStats" :key="shift.name" class="shift-column-pro">
-            <div class="shift-bars-pro">
-              <div class="shift-bar-stack">
-                <div class="bar-stack-item high" :style="{ height: (shift.high / shift.total * 100) + '%' }">
-                  <span class="bar-value" v-if="shift.high > 0">{{ shift.high }}</span>
-                </div>
-                <div class="bar-stack-item medium" :style="{ height: (shift.medium / shift.total * 100) + '%' }">
-                  <span class="bar-value" v-if="shift.medium > 1">{{ shift.medium }}</span>
-                </div>
-                <div class="bar-stack-item low" :style="{ height: (shift.low / shift.total * 100) + '%' }">
-                  <span class="bar-value" v-if="shift.low > 2">{{ shift.low }}</span>
-                </div>
+    <!-- 底部分析区（全宽）-->
+    <footer class="bottom-bar-analysis">
+      <!-- 疲劳原因分布 -->
+      <section class="bottom-chart-card">
+        <h3 class="chart-title-bottom">疲劳原因分布</h3>
+        <div class="cause-chart-mock">
+          <div class="cause-item">
+            <span class="cause-label">睡眠不足 35%</span>
+            <div class="cause-bar" style="width: 35%; background: linear-gradient(90deg, #ff6b3d, #ff8c61);"></div>
+          </div>
+          <div class="cause-item">
+            <span class="cause-label">连续驾驶 28%</span>
+            <div class="cause-bar" style="width: 28%; background: linear-gradient(90deg, #ffa500, #ffc04d);"></div>
+          </div>
+          <div class="cause-item">
+            <span class="cause-label">夜间作业 22%</span>
+            <div class="cause-bar" style="width: 22%; background: linear-gradient(90deg, #9b5bff, #b47fff);"></div>
+          </div>
+          <div class="cause-item">
+            <span class="cause-label">心率异常 10%</span>
+            <div class="cause-bar" style="width: 10%; background: linear-gradient(90deg, #2de1ff, #6aeaff);"></div>
+          </div>
+          <div class="cause-item">
+            <span class="cause-label">其他因素 5%</span>
+            <div class="cause-bar" style="width: 5%; background: linear-gradient(90deg, #00ff88, #4dffaa);"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7日睡眠与疲劳关联 -->
+      <section class="bottom-chart-card">
+        <h3 class="chart-title-bottom">7日睡眠与疲劳关联</h3>
+        <div class="correlation-chart-mock">
+          <div class="chart-legend-bottom">
+            <span><i class="legend-dot sleep"></i>睡眠时长</span>
+            <span><i class="legend-dot fatigue"></i>平均疲劳指数</span>
+          </div>
+          <div class="correlation-bars">
+            <div class="day-group">
+              <div class="bar-pair">
+                <div class="bar sleep-bar" style="height: 60%;"></div>
+                <div class="bar fatigue-bar" style="height: 45%;"></div>
               </div>
+              <span class="day-label">周一</span>
             </div>
-            <div class="shift-name-pro">{{ shift.name }}</div>
-            <div class="shift-total-pro">{{ shift.total }}人</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 设备在线情况（点阵图）-->
-      <section class="bottom-card-pro">
-        <h3 class="bottom-title-pro">设备在线情况</h3>
-        <div class="device-grid-pro">
-          <div class="device-category-pro">
-            <div class="device-name-tag">穿戴设备 {{ devices.wearableOnline }}/{{ devices.wearableTotal }}</div>
-            <div class="device-dots-pro">
-              <span
-                v-for="i in devices.wearableTotal"
-                :key="'w-'+i"
-                class="device-dot"
-                :class="{ online: i <= devices.wearableOnline }"
-              ></span>
+            <div class="day-group">
+              <div class="bar-pair">
+                <div class="bar sleep-bar" style="height: 65%;"></div>
+                <div class="bar fatigue-bar" style="height: 40%;"></div>
+              </div>
+              <span class="day-label">周二</span>
             </div>
-          </div>
-          <div class="device-category-pro">
-            <div class="device-name-tag">驾驶舱摄像头 {{ devices.cameraOnline }}/{{ devices.cameraTotal }}</div>
-            <div class="device-dots-pro">
-              <span
-                v-for="i in devices.cameraTotal"
-                :key="'c-'+i"
-                class="device-dot"
-                :class="{ online: i <= devices.cameraOnline }"
-              ></span>
+            <div class="day-group">
+              <div class="bar-pair">
+                <div class="bar sleep-bar" style="height: 50%;"></div>
+                <div class="bar fatigue-bar" style="height: 70%;"></div>
+              </div>
+              <span class="day-label">周三</span>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- AI运营建议（卡片式）-->
-      <section class="bottom-card-pro">
-        <h3 class="bottom-title-pro">AI 运营建议</h3>
-        <div class="ai-cards-pro">
-          <div class="ai-card-item">
-            <span class="ai-icon">🧠</span>
-            <div class="ai-content">
-              <div class="ai-title">高危区夜班集中</div>
-              <div class="ai-desc">建议提前更换司机</div>
+            <div class="day-group">
+              <div class="bar-pair">
+                <div class="bar sleep-bar" style="height: 55%;"></div>
+                <div class="bar fatigue-bar" style="height: 65%;"></div>
+              </div>
+              <span class="day-label">周四</span>
             </div>
-          </div>
-          <div class="ai-card-item">
-            <span class="ai-icon">📌</span>
-            <div class="ai-content">
-              <div class="ai-title">B12/K23高风险</div>
-              <div class="ai-desc">建议强制休息4小时</div>
+            <div class="day-group">
+              <div class="bar-pair">
+                <div class="bar sleep-bar" style="height: 70%;"></div>
+                <div class="bar fatigue-bar" style="height: 35%;"></div>
+              </div>
+              <span class="day-label">周五</span>
+            </div>
+            <div class="day-group">
+              <div class="bar-pair">
+                <div class="bar sleep-bar" style="height: 80%;"></div>
+                <div class="bar fatigue-bar" style="height: 25%;"></div>
+              </div>
+              <span class="day-label">周六</span>
+            </div>
+            <div class="day-group">
+              <div class="bar-pair">
+                <div class="bar sleep-bar" style="height: 75%;"></div>
+                <div class="bar fatigue-bar" style="height: 30%;"></div>
+              </div>
+              <span class="day-label">周日</span>
             </div>
           </div>
         </div>
@@ -1156,6 +1210,18 @@ const predictPath = computed(() => {
   }).join(' ')
 })
 
+// 视觉疲劳曲线
+const visualFatigueLinePath = computed(() => {
+  if (!currentDriver.value?.visualFatigueTrend) return ''
+  return createPath(currentDriver.value.visualFatigueTrend, 900, 200)
+})
+
+// 生理疲劳曲线
+const physioFatigueLinePath = computed(() => {
+  if (!currentDriver.value?.physioFatigueTrend) return ''
+  return createPath(currentDriver.value.physioFatigueTrend, 900, 200)
+})
+
 const getPointColor = (value) => {
   if (value > 80) return '#ff3d3d'
   if (value > 60) return '#ffa500'
@@ -1353,7 +1419,7 @@ onUnmounted(() => {
 .main-content {
   flex: 1;
   display: grid;
-  grid-template-columns: 250px 1fr 320px;
+  grid-template-columns: 25% 45% 30%;
   gap: 14px;
   overflow: hidden;
   min-height: 0;
@@ -2388,5 +2454,392 @@ onUnmounted(() => {
   font-size: 9px;
   color: #8b92a7;
   line-height: 1.3;
+}
+
+/* ========== Enhanced Driver Cards Styles ========== */
+.driver-rank-item {
+  min-height: 80px !important;
+}
+
+.rank-row-2, .rank-row-3 {
+  display: flex;
+  margin-top: 3px;
+  font-size: 9px;
+  color: #8b92a7;
+}
+
+.rank-sleep {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.rank-hr-deviation {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: #ff6b3d;
+}
+
+.rank-row-4 {
+  margin-top: 4px;
+}
+
+.fatigue-bar-enhanced {
+  height: 6px;
+  background: rgba(45, 225, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.fatigue-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  transition: width 0.5s ease;
+  position: relative;
+
+  &.high {
+    background: linear-gradient(90deg, #ff3d3d, #ff6b3d);
+    box-shadow: 0 0 8px rgba(255, 61, 61, 0.6);
+  }
+
+  &.medium {
+    background: linear-gradient(90deg, #ffa500, #ffd700);
+    box-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
+  }
+
+  &.low {
+    background: linear-gradient(90deg, #00ff88, #4dffaa);
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+  }
+}
+
+.fatigue-score-text {
+  font-size: 8px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* ========== Middle Column - Multi-Modal Curves ========== */
+.chart-legend-pro {
+  .legend-item-pro {
+    .dot {
+      &.visual {
+        background: #2de1ff;
+      }
+      &.physio {
+        background: #00ff88;
+      }
+    }
+  }
+}
+
+/* ========== Right Column - Video Preview ========== */
+.video-preview-card {
+  flex-shrink: 0;
+  height: 140px;
+  padding: 8px;
+}
+
+.video-mock-frame {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(20, 25, 45, 0.9), rgba(10, 14, 39, 0.9));
+  border: 2px solid rgba(45, 225, 255, 0.3);
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &::before {
+    content: '📹';
+    font-size: 40px;
+    opacity: 0.3;
+  }
+}
+
+.video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, transparent 30%, transparent 70%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+.video-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2de1ff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.perclos-overlay {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff6b3d;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  align-self: flex-end;
+}
+
+/* ========== Right Column - Alert Actions ========== */
+.alert-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 3px 6px;
+  font-size: 9px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+
+  &.remind {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+    border: 1px solid rgba(255, 165, 0, 0.4);
+
+    &:hover {
+      background: rgba(255, 165, 0, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+
+  &.contact {
+    background: rgba(45, 225, 255, 0.2);
+    color: #2de1ff;
+    border: 1px solid rgba(45, 225, 255, 0.4);
+
+    &:hover {
+      background: rgba(45, 225, 255, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+
+  &.ignore {
+    background: rgba(139, 146, 167, 0.2);
+    color: #8b92a7;
+    border: 1px solid rgba(139, 146, 167, 0.4);
+
+    &:hover {
+      background: rgba(139, 146, 167, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+/* ========== Right Column - Statistics Card ========== */
+.stats-card-mini {
+  flex-shrink: 0;
+  height: 85px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-item-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #8b92a7;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2de1ff;
+  text-shadow: 0 0 8px rgba(45, 225, 255, 0.5);
+}
+
+/* ========== Bottom Bar - Analysis Charts ========== */
+.bottom-bar-analysis {
+  flex-shrink: 0;
+  height: 180px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.bottom-chart-card {
+  background: rgba(20, 25, 45, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(45, 225, 255, 0.15);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-title-bottom {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2de1ff;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(45, 225, 255, 0.2);
+}
+
+/* Fatigue Cause Chart */
+.cause-chart-mock {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: space-around;
+}
+
+.cause-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cause-label {
+  font-size: 10px;
+  color: #8b92a7;
+}
+
+.cause-bar {
+  height: 18px;
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.5s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  &:hover {
+    transform: scaleX(1.02);
+    box-shadow: 0 4px 12px rgba(45, 225, 255, 0.4);
+  }
+}
+
+/* Sleep Correlation Chart */
+.correlation-chart-mock {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chart-legend-bottom {
+  display: flex;
+  gap: 16px;
+  font-size: 10px;
+  color: #8b92a7;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+
+  &.sleep {
+    background: #2de1ff;
+    box-shadow: 0 0 6px rgba(45, 225, 255, 0.6);
+  }
+
+  &.fatigue {
+    background: #ff6b3d;
+    box-shadow: 0 0 6px rgba(255, 107, 61, 0.6);
+  }
+}
+
+.correlation-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 6px;
+}
+
+.day-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.bar-pair {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+}
+
+.bar {
+  flex: 1;
+  max-width: 12px;
+  min-height: 10px;
+  border-radius: 3px 3px 0 0;
+  transition: all 0.3s;
+
+  &:hover {
+    transform: scaleY(1.05);
+  }
+
+  &.sleep-bar {
+    background: linear-gradient(180deg, #2de1ff, #1ab8e0);
+    box-shadow: 0 0 8px rgba(45, 225, 255, 0.4);
+  }
+
+  &.fatigue-bar {
+    background: linear-gradient(180deg, #ff6b3d, #ff4d1a);
+    box-shadow: 0 0 8px rgba(255, 107, 61, 0.4);
+  }
+}
+
+.day-label {
+  font-size: 9px;
+  color: #8b92a7;
+}
+
+/* ========== Right Column Layout Adjustments ========== */
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.alerts-card-pro {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 </style>
